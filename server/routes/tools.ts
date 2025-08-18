@@ -1,0 +1,116 @@
+import { Router } from 'express';
+import { getDatabase, AITool } from '../database/init';
+
+const router = Router();
+
+// Get all tools
+router.get('/', async (req, res) => {
+  try {
+    const db = getDatabase();
+    const { category, limit = '50', offset = '0' } = req.query;
+
+    let query = 'SELECT * FROM ai_tools';
+    const params: any[] = [];
+
+    if (category) {
+      query += ' WHERE category = ?';
+      params.push(category);
+    }
+
+    query += ' ORDER BY rating DESC, name ASC LIMIT ? OFFSET ?';
+    params.push(parseInt(limit as string), parseInt(offset as string));
+
+    const tools = await db.all(query, params);
+    
+    // Parse JSON fields
+    const parsedTools = tools.map(tool => ({
+      ...tool,
+      pros: JSON.parse(tool.pros || '[]'),
+      cons: JSON.parse(tool.cons || '[]'),
+      tags: JSON.parse(tool.tags || '[]')
+    }));
+
+    res.json(parsedTools);
+  } catch (error) {
+    console.error('Tools fetch error:', error);
+    res.status(500).json({ error: 'Failed to fetch tools' });
+  }
+});
+
+// Get tool by ID
+router.get('/:id', async (req, res) => {
+  try {
+    const db = getDatabase();
+    const { id } = req.params;
+
+    const tool = await db.get('SELECT * FROM ai_tools WHERE id = ?', [id]);
+
+    if (!tool) {
+      return res.status(404).json({ error: 'Tool not found' });
+    }
+
+    // Parse JSON fields
+    const parsedTool = {
+      ...tool,
+      pros: JSON.parse(tool.pros || '[]'),
+      cons: JSON.parse(tool.cons || '[]'),
+      tags: JSON.parse(tool.tags || '[]')
+    };
+
+    res.json(parsedTool);
+  } catch (error) {
+    console.error('Tool fetch error:', error);
+    res.status(500).json({ error: 'Failed to fetch tool' });
+  }
+});
+
+// Add new tool (admin endpoint)
+router.post('/', async (req, res) => {
+  try {
+    const db = getDatabase();
+    const tool: Omit<AITool, 'id' | 'createdAt' | 'updatedAt'> = req.body;
+
+    // Validate required fields
+    const requiredFields = ['name', 'category', 'description', 'link'];
+    for (const field of requiredFields) {
+      if (!tool[field as keyof typeof tool]) {
+        return res.status(400).json({ error: `${field} is required` });
+      }
+    }
+
+    await db.run(`
+      INSERT INTO ai_tools (name, category, description, rating, pricing, pros, cons, best_for, link, tags)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      tool.name,
+      tool.category,
+      tool.description,
+      tool.rating || 0,
+      tool.pricing || '',
+      JSON.stringify(tool.pros || []),
+      JSON.stringify(tool.cons || []),
+      tool.bestFor || '',
+      tool.link,
+      JSON.stringify(tool.tags || [])
+    ]);
+
+    res.status(201).json({ message: 'Tool added successfully' });
+  } catch (error) {
+    console.error('Tool creation error:', error);
+    res.status(500).json({ error: 'Failed to create tool' });
+  }
+});
+
+// Get categories
+router.get('/meta/categories', async (req, res) => {
+  try {
+    const db = getDatabase();
+    const categories = await db.all('SELECT DISTINCT category FROM ai_tools ORDER BY category');
+    res.json(categories.map(c => c.category));
+  } catch (error) {
+    console.error('Categories fetch error:', error);
+    res.status(500).json({ error: 'Failed to fetch categories' });
+  }
+});
+
+export { router as toolsRoutes };

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { mockSearchData } from '../data/mockSearchData';
+import { apiClient } from '../services/api';
 
 interface AITool {
   name: string;
@@ -38,6 +38,7 @@ interface SearchResults {
   youtubeVideos: YouTubeVideo[];
   roadmap: RoadmapStep[];
   additionalResources: AdditionalResource[];
+  error?: string;
 }
 
 interface SearchContextType {
@@ -61,13 +62,23 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const performSearch = async (query: string): Promise<void> => {
     setIsSearching(true);
     
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // Use mock data based on query keywords
-    const results = mockSearchData(query.toLowerCase());
-    setSearchResults(results);
-    setIsSearching(false);
+    try {
+      // Call real API
+      const results = await apiClient.search(query);
+      setSearchResults(results);
+    } catch (error) {
+      console.error('Search failed:', error);
+      // Fallback to empty results with error message
+      setSearchResults({
+        recommendedTools: [],
+        youtubeVideos: [],
+        roadmap: [],
+        additionalResources: [],
+        error: error instanceof Error ? error.message : 'Search failed'
+      });
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   const backToHome = () => {

@@ -9,6 +9,37 @@ interface SearchResultsProps {
 export function SearchResults({ query }: SearchResultsProps) {
   const { searchResults, backToHome } = useSearch();
 
+  // Show error state if there's an error
+  if (searchResults.error) {
+    return (
+      <div className="pt-24 pb-12 px-4 sm:px-6 lg:px-8 min-h-screen">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center mb-8">
+            <button
+              onClick={backToHome}
+              className="flex items-center text-green-400 hover:text-green-300 transition-colors duration-200 mr-6"
+            >
+              <ArrowLeft className="w-5 h-5 mr-2" />
+              Back to Search
+            </button>
+          </div>
+          <div className="text-center py-12">
+            <div className="bg-red-900/20 border border-red-700/50 rounded-xl p-8 max-w-md mx-auto">
+              <h2 className="text-xl font-bold text-red-400 mb-4">Search Error</h2>
+              <p className="text-gray-300 mb-6">{searchResults.error}</p>
+              <button
+                onClick={backToHome}
+                className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-colors duration-200"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="pt-24 pb-12 px-4 sm:px-6 lg:px-8 min-h-screen">
       <div className="max-w-7xl mx-auto">
