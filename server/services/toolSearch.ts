@@ -2,78 +2,69 @@ import { getDatabase, AITool } from '../database/init';
 
 export async function searchTools(query: string): Promise<AITool[]> {
   const db = getDatabase();
-  const searchTerms = query.toLowerCase().split(' ');
+  const searchTerms = query.toLowerCase().split(' ').filter(term => term.length > 0);
   
-  // Build search query with scoring
-  const searchQuery = `
-    SELECT *, 
-    (
-      -- Name matches (highest priority)
-      CASE WHEN LOWER(name) LIKE ? THEN 100 ELSE 0 END +
-      -- Category matches
-      CASE WHEN LOWER(category) LIKE ? THEN 50 ELSE 0 END +
-      -- Description matches
-      CASE WHEN LOWER(description) LIKE ? THEN 30 ELSE 0 END +
-      -- Best for matches
-      CASE WHEN LOWER(best_for) LIKE ? THEN 40 ELSE 0 END +
-      -- Tags matches
-      CASE WHEN LOWER(tags) LIKE ? THEN 60 ELSE 0 END +
-      -- Rating bonus
-      rating * 5
-    ) as relevance_score
-    FROM ai_tools
-    WHERE 
-      LOWER(name) LIKE ? OR
-      LOWER(category) LIKE ? OR
-      LOWER(description) LIKE ? OR
-      LOWER(best_for) LIKE ? OR
-      LOWER(tags) LIKE ?
-    ORDER BY relevance_score DESC, rating DESC
-    LIMIT 10
-  `;
-
-  // Create search patterns
-  const patterns = searchTerms.map(term => `%${term}%`);
-  const allTermsPattern = `%${searchTerms.join('%')}%`;
-  
-  // Parameters for the query (5 for scoring + 5 for WHERE clause)
-  const params = [
-    allTermsPattern, allTermsPattern, allTermsPattern, allTermsPattern, allTermsPattern, // scoring
-    allTermsPattern, allTermsPattern, allTermsPattern, allTermsPattern, allTermsPattern  // where clause
-  ];
+  if (searchTerms.length === 0) {
+    // Return popular tools if no search terms
+    const results = await db.all('SELECT * FROM ai_tools ORDER BY rating DESC LIMIT 10');
+    return results.map(tool => parseToolFromDB(tool));
+  }
 
   try {
-    const results = await db.all(searchQuery, params);
+    // Use a simpler approach with multiple OR conditions
+    const searchPattern = `%${searchTerms.join('%')}%`;
     
-    // Parse JSON fields and add keyword-based filtering
-    const tools = results.map(tool => ({
-      ...tool,
-      pros: JSON.parse(tool.pros || '[]'),
-      cons: JSON.parse(tool.cons || '[]'),
-      tags: JSON.parse(tool.tags || '[]')
-    }));
+    const searchQuery = `
+      SELECT *,
+      (CASE 
+        WHEN LOWER(name) LIKE ? THEN 100
+        WHEN LOWER(category) LIKE ? THEN 80
+        WHEN LOWER(description) LIKE ? THEN 60
+        WHEN LOWER(best_for) LIKE ? THEN 70
+        WHEN LOWER(tags) LIKE ? THEN 85
+        ELSE 0
+      END + rating * 5) as relevance_score
+      FROM ai_tools
+      WHERE 
+        LOWER(name) LIKE ? OR
+        LOWER(category) LIKE ? OR
+        LOWER(description) LIKE ? OR
+        LOWER(best_for) LIKE ? OR
+        LOWER(tags) LIKE ?
+      ORDER BY relevance_score DESC, rating DESC
+      LIMIT 10
+    `;
 
-    // Additional keyword-based filtering for better relevance
-    return tools.filter(tool => {
-      const toolText = `${tool.name} ${tool.category} ${tool.description} ${tool.best_for} ${tool.tags.join(' ')}`.toLowerCase();
-      return searchTerms.some(term => toolText.includes(term));
-    });
+    const params = [
+      searchPattern, searchPattern, searchPattern, searchPattern, searchPattern, // scoring
+      searchPattern, searchPattern, searchPattern, searchPattern, searchPattern  // where clause
+    ];
+
+    const results = await db.all(searchQuery, params);
+    return results.map(tool => parseToolFromDB(tool));
 
   } catch (error) {
     console.error('Tool search error:', error);
     
     // Fallback: return popular tools if search fails
-    const fallbackResults = await db.all(
-      'SELECT * FROM ai_tools ORDER BY rating DESC LIMIT 5'
-    );
-    
-    return fallbackResults.map(tool => ({
-      ...tool,
-      pros: JSON.parse(tool.pros || '[]'),
-      cons: JSON.parse(tool.cons || '[]'),
-      tags: JSON.parse(tool.tags || '[]')
-    }));
+    try {
+      const fallbackResults = await db.all('SELECT * FROM ai_tools ORDER BY rating DESC LIMIT 5');
+      return fallbackResults.map(tool => parseToolFromDB(tool));
+    } catch (fallbackError) {
+      console.error('Fallback search also failed:', fallbackError);
+      return [];
+    }
   }
+}
+
+// Helper function to parse tool data from database
+function parseToolFromDB(tool: any): AITool {
+  return {
+    ...tool,
+    pros: JSON.parse(tool.pros || '[]'),
+    cons: JSON.parse(tool.cons || '[]'),
+    tags: JSON.parse(tool.tags || '[]')
+  };
 }
 
 export async function getToolsByCategory(category: string): Promise<AITool[]> {
@@ -85,12 +76,7 @@ export async function getToolsByCategory(category: string): Promise<AITool[]> {
       [category]
     );
     
-    return results.map(tool => ({
-      ...tool,
-      pros: JSON.parse(tool.pros || '[]'),
-      cons: JSON.parse(tool.cons || '[]'),
-      tags: JSON.parse(tool.tags || '[]')
-    }));
+    return results.map(tool => parseToolFromDB(tool));
   } catch (error) {
     console.error('Category search error:', error);
     return [];
@@ -109,12 +95,7 @@ export async function getToolsByTags(tags: string[]): Promise<AITool[]> {
       tagParams
     );
     
-    return results.map(tool => ({
-      ...tool,
-      pros: JSON.parse(tool.pros || '[]'),
-      cons: JSON.parse(tool.cons || '[]'),
-      tags: JSON.parse(tool.tags || '[]')
-    }));
+    return results.map(tool => parseToolFromDB(tool));
   } catch (error) {
     console.error('Tag search error:', error);
     return [];

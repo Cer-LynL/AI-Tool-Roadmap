@@ -1,8 +1,16 @@
 import sqlite3 from 'sqlite3';
 import { promisify } from 'util';
 import path from 'path';
+import fs from 'fs';
 
-const DB_PATH = path.join(__dirname, '../../data/app.db');
+const DB_PATH = process.env.DATABASE_PATH || path.join(process.cwd(), 'data', 'app.db');
+
+// Ensure the data directory exists
+const dataDir = path.dirname(DB_PATH);
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
+  console.log(`📁 Created data directory: ${dataDir}`);
+}
 
 export interface AITool {
   id?: number;
@@ -31,7 +39,15 @@ class Database {
   private db: sqlite3.Database;
 
   constructor() {
-    this.db = new sqlite3.Database(DB_PATH);
+    console.log(`🗄️  Connecting to database at: ${DB_PATH}`);
+    this.db = new sqlite3.Database(DB_PATH, (err) => {
+      if (err) {
+        console.error('❌ Database connection failed:', err);
+        throw err;
+      } else {
+        console.log('✅ Database connected successfully');
+      }
+    });
   }
 
   async run(sql: string, params: any[] = []): Promise<void> {
@@ -83,43 +99,53 @@ export function getDatabase(): Database {
 export async function initializeDatabase(): Promise<void> {
   const db = getDatabase();
   
-  // Create tables
-  await db.run(`
-    CREATE TABLE IF NOT EXISTS ai_tools (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      category TEXT NOT NULL,
-      description TEXT NOT NULL,
-      rating REAL DEFAULT 0,
-      pricing TEXT,
-      pros TEXT, -- JSON array as string
-      cons TEXT, -- JSON array as string
-      best_for TEXT,
-      link TEXT,
-      tags TEXT, -- JSON array as string
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
+  try {
+    // Create tables
+    await db.run(`
+      CREATE TABLE IF NOT EXISTS ai_tools (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        category TEXT NOT NULL,
+        description TEXT NOT NULL,
+        rating REAL DEFAULT 0,
+        pricing TEXT,
+        pros TEXT,
+        cons TEXT,
+        best_for TEXT,
+        link TEXT,
+        tags TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
 
-  await db.run(`
-    CREATE TABLE IF NOT EXISTS search_queries (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      query TEXT NOT NULL,
-      results TEXT, -- JSON string
-      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
+    await db.run(`
+      CREATE TABLE IF NOT EXISTS search_queries (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        query TEXT NOT NULL,
+        results TEXT,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
 
-  // Create indexes
-  await db.run(`CREATE INDEX IF NOT EXISTS idx_tools_category ON ai_tools(category)`);
-  await db.run(`CREATE INDEX IF NOT EXISTS idx_tools_tags ON ai_tools(tags)`);
-  await db.run(`CREATE INDEX IF NOT EXISTS idx_queries_timestamp ON search_queries(timestamp)`);
+    // Create indexes
+    await db.run(`CREATE INDEX IF NOT EXISTS idx_tools_category ON ai_tools(category)`);
+    await db.run(`CREATE INDEX IF NOT EXISTS idx_tools_tags ON ai_tools(tags)`);
+    await db.run(`CREATE INDEX IF NOT EXISTS idx_queries_timestamp ON search_queries(timestamp)`);
 
-  console.log('✅ Database initialized successfully');
-  
-  // Seed with some initial data if empty
-  await seedInitialData(db);
+    console.log('✅ Database initialized successfully');
+    
+    // Seed with some initial data if empty
+    await seedInitialData(db);
+    
+    // Test database by running a simple query
+    const testResult = await db.get('SELECT COUNT(*) as count FROM ai_tools');
+    console.log(`📊 Database contains ${testResult.count} tools`);
+    
+  } catch (error) {
+    console.error('❌ Database initialization failed:', error);
+    throw error;
+  }
 }
 
 async function seedInitialData(db: Database): Promise<void> {
