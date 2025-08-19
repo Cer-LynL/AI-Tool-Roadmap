@@ -31,18 +31,18 @@ export function Footer() {
   ];
 
   return (
-    <footer className="bg-gray-800/50 border-t border-gray-700/50 pt-16 pb-8">
+    <footer className="bg-black border-t border-white/10 pt-16 pb-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid lg:grid-cols-4 gap-8 mb-12">
           {/* Brand */}
           <div className="lg:col-span-1">
             <div className="flex items-center mb-6">
-              <div className="w-8 h-8 bg-gradient-to-br from-green-400 to-green-600 rounded-lg flex items-center justify-center">
-                <Search className="w-5 h-5 text-white" />
+              <div className="w-10 h-10 bg-gradient-to-br from-teal-500 to-emerald-400 rounded-2xl flex items-center justify-center shadow-lg">
+                <Search className="w-6 h-6 text-white" />
               </div>
-              <span className="ml-3 text-xl font-bold text-white">AINavigator</span>
+              <span className="ml-4 text-2xl font-bold text-white tracking-tight">AIFinder</span>
             </div>
-            <p className="text-gray-300 mb-6 leading-relaxed">
+            <p className="text-white/70 mb-6 leading-relaxed font-light">
               Navigate the AI tool landscape with confidence. Find the perfect tools, get expert recommendations, and achieve your goals faster.
             </p>
             <div className="flex space-x-4">
@@ -50,7 +50,7 @@ export function Footer() {
                 <a
                   key={index}
                   href={link.href}
-                  className="text-gray-400 hover:text-green-400 transition-colors duration-200"
+                  className="text-white/60 hover:text-teal-500 transition-colors duration-300"
                   aria-label={link.label}
                 >
                   {link.icon}
@@ -68,7 +68,7 @@ export function Footer() {
                   <li key={index}>
                     <a
                       href={link.href}
-                      className="text-gray-400 hover:text-green-400 transition-colors duration-200"
+                      className="text-white/60 hover:text-teal-500 transition-colors duration-300"
                     >
                       {link.name}
                     </a>
@@ -80,9 +80,9 @@ export function Footer() {
         </div>
 
         {/* Bottom */}
-        <div className="border-t border-gray-700/50 pt-8 flex flex-col md:flex-row justify-between items-center">
-          <p className="text-gray-400 text-sm">
-            © 2024 AINavigator. All rights reserved. Built with ❤️ for the AI community.
+        <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center">
+          <p className="text-white/60 text-sm font-light">
+            © 2024 AIFinder. All rights reserved. Built with ❤️ for the AI community.
           </p>
           <div className="flex space-x-6 mt-4 md:mt-0">
             <a href="#terms" className="text-gray-400 hover:text-green-400 text-sm transition-colors duration-200">

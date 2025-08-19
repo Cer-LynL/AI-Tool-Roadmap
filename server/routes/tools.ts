@@ -10,7 +10,7 @@ router.get('/', async (req, res) => {
     const { category, limit = '50', offset = '0' } = req.query;
 
     let query = 'SELECT * FROM ai_tools';
-    const params: any[] = [];
+    const params: (string | number)[] = [];
 
     if (category) {
       query += ' WHERE category = ?';
@@ -27,11 +27,12 @@ router.get('/', async (req, res) => {
       ...tool,
       pros: JSON.parse(tool.pros || '[]'),
       cons: JSON.parse(tool.cons || '[]'),
-      tags: JSON.parse(tool.tags || '[]')
+      tags: JSON.parse(tool.tags || '[]'),
+      bestFor: tool.best_for || tool.bestFor || ''
     }));
 
     res.json(parsedTools);
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Tools fetch error:', error);
     res.status(500).json({ error: 'Failed to fetch tools' });
   }
@@ -54,11 +55,12 @@ router.get('/:id', async (req, res) => {
       ...tool,
       pros: JSON.parse(tool.pros || '[]'),
       cons: JSON.parse(tool.cons || '[]'),
-      tags: JSON.parse(tool.tags || '[]')
+      tags: JSON.parse(tool.tags || '[]'),
+      bestFor: tool.best_for || tool.bestFor || ''
     };
 
     res.json(parsedTool);
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Tool fetch error:', error);
     res.status(500).json({ error: 'Failed to fetch tool' });
   }
@@ -95,7 +97,7 @@ router.post('/', async (req, res) => {
     ]);
 
     res.status(201).json({ message: 'Tool added successfully' });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Tool creation error:', error);
     res.status(500).json({ error: 'Failed to create tool' });
   }
@@ -107,7 +109,7 @@ router.get('/meta/categories', async (req, res) => {
     const db = getDatabase();
     const categories = await db.all('SELECT DISTINCT category FROM ai_tools ORDER BY category');
     res.json(categories.map(c => c.category));
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Categories fetch error:', error);
     res.status(500).json({ error: 'Failed to fetch categories' });
   }

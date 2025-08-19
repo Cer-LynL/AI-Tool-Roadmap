@@ -49,11 +49,12 @@ router.post('/', async (req, res) => {
     );
 
     res.json(results);
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Search error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     res.status(500).json({ 
       error: 'Internal server error',
-      message: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: process.env.NODE_ENV === 'development' ? errorMessage : undefined
     });
   }
 });
@@ -70,9 +71,13 @@ router.get('/history', async (req, res) => {
     );
 
     res.json(history);
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('History error:', error);
-    res.status(500).json({ error: 'Failed to fetch search history' });
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ 
+      error: 'Failed to fetch search history',
+      message: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+    });
   }
 });
 

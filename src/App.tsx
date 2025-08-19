@@ -9,7 +9,7 @@ import { SearchProvider } from './context/SearchContext';
 function App() {
   return (
     <SearchProvider>
-      <div className="min-h-screen bg-gray-900 text-white">
+      <div className="min-h-screen bg-black text-white font-sans">
         <Header />
         <Hero />
         <Features />

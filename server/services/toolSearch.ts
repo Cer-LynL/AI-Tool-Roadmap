@@ -33,7 +33,6 @@ export async function searchTools(query: string): Promise<AITool[]> {
   `;
 
   // Create search patterns
-  const patterns = searchTerms.map(term => `%${term}%`);
   const allTermsPattern = `%${searchTerms.join('%')}%`;
   
   // Parameters for the query (5 for scoring + 5 for WHERE clause)
@@ -45,17 +44,18 @@ export async function searchTools(query: string): Promise<AITool[]> {
   try {
     const results = await db.all(searchQuery, params);
     
-    // Parse JSON fields and add keyword-based filtering
+    // Parse JSON fields and normalize database field names
     const tools = results.map(tool => ({
       ...tool,
       pros: JSON.parse(tool.pros || '[]'),
       cons: JSON.parse(tool.cons || '[]'),
-      tags: JSON.parse(tool.tags || '[]')
+      tags: JSON.parse(tool.tags || '[]'),
+      bestFor: tool.best_for || tool.bestFor || ''  // Handle both database and interface naming
     }));
 
     // Additional keyword-based filtering for better relevance
     return tools.filter(tool => {
-      const toolText = `${tool.name} ${tool.category} ${tool.description} ${tool.best_for} ${tool.tags.join(' ')}`.toLowerCase();
+      const toolText = `${tool.name} ${tool.category} ${tool.description} ${tool.bestFor || tool.best_for || ''} ${tool.tags.join(' ')}`.toLowerCase();
       return searchTerms.some(term => toolText.includes(term));
     });
 
@@ -71,7 +71,8 @@ export async function searchTools(query: string): Promise<AITool[]> {
       ...tool,
       pros: JSON.parse(tool.pros || '[]'),
       cons: JSON.parse(tool.cons || '[]'),
-      tags: JSON.parse(tool.tags || '[]')
+      tags: JSON.parse(tool.tags || '[]'),
+      bestFor: tool.best_for || tool.bestFor || ''
     }));
   }
 }
@@ -89,7 +90,8 @@ export async function getToolsByCategory(category: string): Promise<AITool[]> {
       ...tool,
       pros: JSON.parse(tool.pros || '[]'),
       cons: JSON.parse(tool.cons || '[]'),
-      tags: JSON.parse(tool.tags || '[]')
+      tags: JSON.parse(tool.tags || '[]'),
+      bestFor: tool.best_for || tool.bestFor || ''
     }));
   } catch (error) {
     console.error('Category search error:', error);
@@ -113,7 +115,8 @@ export async function getToolsByTags(tags: string[]): Promise<AITool[]> {
       ...tool,
       pros: JSON.parse(tool.pros || '[]'),
       cons: JSON.parse(tool.cons || '[]'),
-      tags: JSON.parse(tool.tags || '[]')
+      tags: JSON.parse(tool.tags || '[]'),
+      bestFor: tool.best_for || tool.bestFor || ''
     }));
   } catch (error) {
     console.error('Tag search error:', error);
