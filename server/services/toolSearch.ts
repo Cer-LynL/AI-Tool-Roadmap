@@ -1,4 +1,23 @@
-import { getDatabase, AITool } from '../database/init';
+import { getDatabase, AITool, ToolRow } from '../database/init';
+
+// Helper function to convert ToolRow to AITool
+function convertToolRowToAITool(tool: ToolRow): AITool {
+  return {
+    id: tool.id,
+    name: tool.name,
+    category: tool.category,
+    description: tool.description,
+    rating: tool.rating,
+    pricing: tool.pricing,
+    pros: JSON.parse(tool.pros || '[]') as string[],
+    cons: JSON.parse(tool.cons || '[]') as string[],
+    tags: JSON.parse(tool.tags || '[]') as string[],
+    bestFor: tool.best_for || '',
+    link: tool.link,
+    createdAt: tool.created_at,
+    updatedAt: tool.updated_at
+  };
+}
 
 export async function searchTools(query: string): Promise<AITool[]> {
   const db = getDatabase();
@@ -42,20 +61,14 @@ export async function searchTools(query: string): Promise<AITool[]> {
   ];
 
   try {
-    const results = await db.all(searchQuery, params);
+    const results = await db.all(searchQuery, params) as ToolRow[];
     
     // Parse JSON fields and normalize database field names
-    const tools = results.map(tool => ({
-      ...tool,
-      pros: JSON.parse(tool.pros || '[]'),
-      cons: JSON.parse(tool.cons || '[]'),
-      tags: JSON.parse(tool.tags || '[]'),
-      bestFor: tool.best_for || tool.bestFor || ''  // Handle both database and interface naming
-    }));
+    const tools: AITool[] = results.map(convertToolRowToAITool);
 
     // Additional keyword-based filtering for better relevance
     return tools.filter(tool => {
-      const toolText = `${tool.name} ${tool.category} ${tool.description} ${tool.bestFor || tool.best_for || ''} ${tool.tags.join(' ')}`.toLowerCase();
+      const toolText = `${tool.name} ${tool.category} ${tool.description} ${tool.bestFor} ${tool.tags.join(' ')}`.toLowerCase();
       return searchTerms.some(term => toolText.includes(term));
     });
 
@@ -65,15 +78,9 @@ export async function searchTools(query: string): Promise<AITool[]> {
     // Fallback: return popular tools if search fails
     const fallbackResults = await db.all(
       'SELECT * FROM ai_tools ORDER BY rating DESC LIMIT 5'
-    );
+    ) as ToolRow[];
     
-    return fallbackResults.map(tool => ({
-      ...tool,
-      pros: JSON.parse(tool.pros || '[]'),
-      cons: JSON.parse(tool.cons || '[]'),
-      tags: JSON.parse(tool.tags || '[]'),
-      bestFor: tool.best_for || tool.bestFor || ''
-    }));
+    return fallbackResults.map(convertToolRowToAITool);
   }
 }
 
@@ -86,13 +93,7 @@ export async function getToolsByCategory(category: string): Promise<AITool[]> {
       [category]
     );
     
-    return results.map(tool => ({
-      ...tool,
-      pros: JSON.parse(tool.pros || '[]'),
-      cons: JSON.parse(tool.cons || '[]'),
-      tags: JSON.parse(tool.tags || '[]'),
-      bestFor: tool.best_for || tool.bestFor || ''
-    }));
+    return (results as ToolRow[]).map(convertToolRowToAITool);
   } catch (error) {
     console.error('Category search error:', error);
     return [];
@@ -111,13 +112,7 @@ export async function getToolsByTags(tags: string[]): Promise<AITool[]> {
       tagParams
     );
     
-    return results.map(tool => ({
-      ...tool,
-      pros: JSON.parse(tool.pros || '[]'),
-      cons: JSON.parse(tool.cons || '[]'),
-      tags: JSON.parse(tool.tags || '[]'),
-      bestFor: tool.best_for || tool.bestFor || ''
-    }));
+    return (results as ToolRow[]).map(convertToolRowToAITool);
   } catch (error) {
     console.error('Tag search error:', error);
     return [];

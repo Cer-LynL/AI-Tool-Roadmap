@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowLeft, Star, ExternalLink, Play, Calendar, TrendingUp, Users } from 'lucide-react';
 import { useSearch } from '../context/SearchContext';
+import { OptimizedPrompt } from './OptimizedPrompt';
 
 interface SearchResultsProps {
   query: string;
@@ -61,6 +62,11 @@ export function SearchResults({ query }: SearchResultsProps) {
             </p>
           </div>
         </div>
+
+        {/* Optimized Prompt Section */}
+        {searchResults.optimizedPrompt && (
+          <OptimizedPrompt optimizedPrompt={searchResults.optimizedPrompt} />
+        )}
 
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Main Content */}

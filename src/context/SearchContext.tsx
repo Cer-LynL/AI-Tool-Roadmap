@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { apiClient } from '../services/api';
+import { apiClient, OptimizedPrompt } from '../services/api';
 
 interface AITool {
   name: string;
@@ -38,6 +38,7 @@ interface SearchResults {
   youtubeVideos: YouTubeVideo[];
   roadmap: RoadmapStep[];
   additionalResources: AdditionalResource[];
+  optimizedPrompt?: OptimizedPrompt;
   error?: string;
 }
 

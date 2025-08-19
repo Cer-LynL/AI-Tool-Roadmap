@@ -14,8 +14,7 @@ export async function searchYouTubeVideos(query: string): Promise<YouTubeVideo[]
   // If YouTube API key is not available, return curated results
   const apiKey = process.env.YOUTUBE_API_KEY;
   
-  console.log('🔑 YouTube API Key check:', apiKey ? 'Found' : 'Not found');
-  console.log('🔍 All env vars:', Object.keys(process.env).filter(key => key.includes('YOUTUBE')));
+  console.log('🔑 YouTube API Key:', apiKey ? 'Found - using real API' : 'Not found - using curated results');
   
   if (!apiKey) {
     console.log('📺 No YouTube API key found, returning curated results');

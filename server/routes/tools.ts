@@ -12,7 +12,7 @@ router.get('/', async (req, res) => {
     let query = 'SELECT * FROM ai_tools';
     const params: (string | number)[] = [];
 
-    if (category) {
+    if (category && typeof category === 'string') {
       query += ' WHERE category = ?';
       params.push(category);
     }
@@ -25,10 +25,10 @@ router.get('/', async (req, res) => {
     // Parse JSON fields
     const parsedTools = tools.map(tool => ({
       ...tool,
-      pros: JSON.parse(tool.pros || '[]'),
-      cons: JSON.parse(tool.cons || '[]'),
-      tags: JSON.parse(tool.tags || '[]'),
-      bestFor: tool.best_for || tool.bestFor || ''
+      pros: JSON.parse(tool.pros as string || '[]'),
+      cons: JSON.parse(tool.cons as string || '[]'),
+      tags: JSON.parse(tool.tags as string || '[]'),
+      bestFor: tool.best_for as string || ''
     }));
 
     res.json(parsedTools);
@@ -47,16 +47,17 @@ router.get('/:id', async (req, res) => {
     const tool = await db.get('SELECT * FROM ai_tools WHERE id = ?', [id]);
 
     if (!tool) {
-      return res.status(404).json({ error: 'Tool not found' });
+      res.status(404).json({ error: 'Tool not found' });
+      return;
     }
 
     // Parse JSON fields
     const parsedTool = {
       ...tool,
-      pros: JSON.parse(tool.pros || '[]'),
-      cons: JSON.parse(tool.cons || '[]'),
-      tags: JSON.parse(tool.tags || '[]'),
-      bestFor: tool.best_for || tool.bestFor || ''
+      pros: JSON.parse(tool.pros as string || '[]'),
+      cons: JSON.parse(tool.cons as string || '[]'),
+      tags: JSON.parse(tool.tags as string || '[]'),
+      bestFor: tool.best_for as string || ''
     };
 
     res.json(parsedTool);
@@ -73,11 +74,9 @@ router.post('/', async (req, res) => {
     const tool: Omit<AITool, 'id' | 'createdAt' | 'updatedAt'> = req.body;
 
     // Validate required fields
-    const requiredFields = ['name', 'category', 'description', 'link'];
-    for (const field of requiredFields) {
-      if (!tool[field as keyof typeof tool]) {
-        return res.status(400).json({ error: `${field} is required` });
-      }
+    if (!tool.name || !tool.category || !tool.description || !tool.link) {
+      res.status(400).json({ error: 'name, category, description, and link are required' });
+      return;
     }
 
     await db.run(`

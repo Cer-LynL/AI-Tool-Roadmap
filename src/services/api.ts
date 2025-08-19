@@ -5,11 +5,25 @@ export interface APIError {
   message?: string;
 }
 
+export interface OptimizedPrompt {
+  originalPrompt: string;
+  optimizedPrompt: string;
+  clarifyingQuestions: string[];
+  taskBreakdown: string[];
+  suggestedContext: {
+    background: string;
+    constraints: string;
+    goals: string[];
+  };
+  promptingTips: string[];
+}
+
 export interface SearchResponse {
   recommendedTools: any[];
   youtubeVideos: any[];
   roadmap: any[];
   additionalResources: any[];
+  optimizedPrompt: OptimizedPrompt;
   query: string;
   timestamp: string;
 }

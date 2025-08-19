@@ -25,8 +25,32 @@ export interface AITool {
 export interface SearchQuery {
   id?: number;
   query: string;
-  results: string;
+  results: string | null;
   timestamp: string;
+}
+
+export interface DatabaseRow {
+  [key: string]: string | number | null | undefined;
+}
+
+export interface ToolRow extends DatabaseRow {
+  id: number;
+  name: string;
+  category: string;
+  description: string;
+  rating: number;
+  pricing: string;
+  pros: string;
+  cons: string;
+  best_for: string;
+  link: string;
+  tags: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CountRow {
+  count: number;
 }
 
 class Database {
@@ -36,40 +60,78 @@ class Database {
     this.db = new sqlite3.Database(DB_PATH);
   }
 
-  async run(sql: string, params: any[] = []): Promise<void> {
+  async run(sql: string, params: (string | number | null)[] = []): Promise<void> {
     return new Promise((resolve, reject) => {
-      this.db.run(sql, params, function(err) {
+      this.db.run(sql, params, function(err: Error | null) {
         if (err) reject(err);
         else resolve();
       });
     });
   }
 
-  async get(sql: string, params: any[] = []): Promise<any> {
+  async get(sql: string, params: (string | number | null)[] = []): Promise<DatabaseRow | undefined> {
     return new Promise((resolve, reject) => {
-      this.db.get(sql, params, (err, row) => {
+      this.db.get(sql, params, (err: Error | null, row: DatabaseRow | undefined) => {
         if (err) reject(err);
         else resolve(row);
       });
     });
   }
 
-  async all(sql: string, params: any[] = []): Promise<any[]> {
+  async all(sql: string, params: (string | number | null)[] = []): Promise<DatabaseRow[]> {
     return new Promise((resolve, reject) => {
-      this.db.all(sql, params, (err, rows) => {
+      this.db.all(sql, params, (err: Error | null, rows: DatabaseRow[]) => {
         if (err) reject(err);
-        else resolve(rows);
+        else resolve(rows || []);
       });
     });
   }
 
   close(): Promise<void> {
     return new Promise((resolve, reject) => {
-      this.db.close((err) => {
+      this.db.close((err: Error | null) => {
         if (err) reject(err);
         else resolve();
       });
     });
+  }
+
+  // Typed helper methods for specific operations
+  async getTools(): Promise<ToolRow[]> {
+    const rows = await this.all('SELECT * FROM ai_tools ORDER BY rating DESC');
+    return rows as ToolRow[];
+  }
+
+  async getToolById(id: number): Promise<ToolRow | undefined> {
+    const row = await this.get('SELECT * FROM ai_tools WHERE id = ?', [id]);
+    return row as ToolRow | undefined;
+  }
+
+  async searchToolsByQuery(query: string): Promise<ToolRow[]> {
+    const searchPattern = `%${query.toLowerCase()}%`;
+    const rows = await this.all(`
+      SELECT * FROM ai_tools 
+      WHERE LOWER(name) LIKE ? 
+         OR LOWER(category) LIKE ? 
+         OR LOWER(description) LIKE ? 
+         OR LOWER(best_for) LIKE ? 
+         OR LOWER(tags) LIKE ?
+      ORDER BY rating DESC
+    `, [searchPattern, searchPattern, searchPattern, searchPattern, searchPattern]);
+    return rows as ToolRow[];
+  }
+
+  async getSearchQueries(limit: number = 10): Promise<SearchQuery[]> {
+    const rows = await this.all(
+      'SELECT id, query, results, timestamp FROM search_queries ORDER BY timestamp DESC LIMIT ?',
+      [limit]
+    );
+    return rows.map(row => ({
+      id: row.id as number,
+      query: row.query as string,
+      results: row.results as string | null,
+      timestamp: row.timestamp as string
+    }));
   }
 }
 
@@ -125,9 +187,9 @@ export async function initializeDatabase(): Promise<void> {
 }
 
 async function seedInitialData(db: Database): Promise<void> {
-  const existingTools = await db.get('SELECT COUNT(*) as count FROM ai_tools');
+  const existingTools = await db.get('SELECT COUNT(*) as count FROM ai_tools') as CountRow | undefined;
   
-  if (existingTools.count === 0) {
+  if (!existingTools || existingTools.count === 0) {
     console.log('🌱 Seeding initial tool data...');
     
     const initialTools: Omit<AITool, 'id' | 'createdAt' | 'updatedAt'>[] = [
@@ -196,7 +258,7 @@ async function seedInitialData(db: Database): Promise<void> {
         tool.bestFor,
         tool.link,
         JSON.stringify(tool.tags)
-      ]);
+      ] as (string | number)[]);
     }
 
     console.log('✅ Initial tool data seeded');

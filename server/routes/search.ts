@@ -4,16 +4,18 @@ import { searchYouTubeVideos } from '../services/youtube';
 import { generateRoadmap } from '../services/roadmap';
 import { findAdditionalResources } from '../services/resources';
 import { searchTools } from '../services/toolSearch';
+import { generateOptimizedPrompt } from '../services/promptOptimization';
 
 const router = Router();
 
 // Main search endpoint
-router.post('/', async (req, res) => {
+router.post('/', async (req, res): Promise<void> => {
   try {
     const { query } = req.body;
     
     if (!query || typeof query !== 'string') {
-      return res.status(400).json({ error: 'Query is required and must be a string' });
+      res.status(400).json({ error: 'Query is required and must be a string' });
+      return;
     }
 
     console.log(`🔍 Processing search query: "${query}"`);
@@ -25,12 +27,13 @@ router.post('/', async (req, res) => {
       [query]
     );
 
-    // Perform parallel searches
-    const [recommendedTools, youtubeVideos, roadmap, additionalResources] = await Promise.all([
+    // Perform parallel searches and generate optimized prompt
+    const [recommendedTools, youtubeVideos, roadmap, additionalResources, optimizedPrompt] = await Promise.all([
       searchTools(query),
       searchYouTubeVideos(query),
       generateRoadmap(query),
-      findAdditionalResources(query)
+      findAdditionalResources(query),
+      Promise.resolve(generateOptimizedPrompt(query))
     ]);
 
     const results = {
@@ -38,6 +41,7 @@ router.post('/', async (req, res) => {
       youtubeVideos,
       roadmap,
       additionalResources,
+      optimizedPrompt,
       query,
       timestamp: new Date().toISOString()
     };
